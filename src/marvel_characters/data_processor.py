@@ -41,7 +41,7 @@ class DataProcessor:
         self.df["Universe"] = self.df["Universe"].replace(small_universes, "Other")
 
         # Teams
-        self.df["Teams"] = self.df["Teams"].notna().astype("int")
+        self.df["Teams"] = self.df["Teams"].notna().astype("int64")
 
         # Origin
         self.df["Origin"] = self.df["Origin"].fillna("Unknown")
@@ -89,7 +89,7 @@ class DataProcessor:
         self.df["Origin"] = self.df["Origin"].apply(normalize_origin)
 
         self.df = self.df[self.df["Alive"].isin(["Alive", "Dead"])]
-        self.df["Alive"] = (self.df["Alive"] == "Alive").astype(int)
+        self.df["Alive"] = (self.df["Alive"] == "Alive").astype("int64")
 
         self.df = self.df[num_features + cat_features + [target] + ["PageID"]]
 
