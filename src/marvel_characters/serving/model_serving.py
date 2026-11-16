@@ -3,7 +3,8 @@
 import mlflow
 from databricks.sdk import WorkspaceClient
 from databricks.sdk.service.serving import (
-    AutoCaptureConfigInput,
+    AiGatewayConfig,
+    AiGatewayInferenceTableConfig,
     EndpointCoreConfigInput,
     ServedEntityInput,
 )
@@ -56,7 +57,8 @@ class ModelServing:
         ]
 
         # Log every request/response to <catalog>.<schema>.custom_model_payload (read by monitoring.py)
-        auto_capture_config = AutoCaptureConfigInput(
+        # (AI Gateway inference tables; the legacy auto_capture_config is deprecated)
+        inference_table_config = AiGatewayInferenceTableConfig(
             catalog_name=self.catalog_name,
             schema_name=self.schema_name,
             table_name_prefix="custom_model",
@@ -66,14 +68,11 @@ class ModelServing:
         if not endpoint_exists:
             self.workspace.serving_endpoints.create(
                 name=self.endpoint_name,
-                config=EndpointCoreConfigInput(
-                    served_entities=served_entities,
-                    auto_capture_config=auto_capture_config,
-                ),
+                config=EndpointCoreConfigInput(served_entities=served_entities),
+                ai_gateway=AiGatewayConfig(inference_table_config=inference_table_config),
             )
         else:
-            self.workspace.serving_endpoints.update_config(
-                name=self.endpoint_name,
-                served_entities=served_entities,
-                auto_capture_config=auto_capture_config,
+            self.workspace.serving_endpoints.put_ai_gateway(
+                name=self.endpoint_name, inference_table_config=inference_table_config
             )
+            self.workspace.serving_endpoints.update_config(name=self.endpoint_name, served_entities=served_entities)
