@@ -3,6 +3,7 @@
 import mlflow
 from databricks.sdk import WorkspaceClient
 from databricks.sdk.service.serving import (
+    AutoCaptureConfigInput,
     EndpointCoreConfigInput,
     ServedEntityInput,
 )
@@ -20,6 +21,8 @@ class ModelServing:
         self.workspace = WorkspaceClient()
         self.endpoint_name = endpoint_name
         self.model_name = model_name
+        # model_name has the form <catalog>.<schema>.<model>; inference logs go to the same schema
+        self.catalog_name, self.schema_name, _ = model_name.split(".")
 
     def get_latest_model_version(self) -> str:
         """Retrieve the latest version of the model.
@@ -52,12 +55,25 @@ class ModelServing:
             )
         ]
 
+        # Log every request/response to <catalog>.<schema>.custom_model_payload (read by monitoring.py)
+        auto_capture_config = AutoCaptureConfigInput(
+            catalog_name=self.catalog_name,
+            schema_name=self.schema_name,
+            table_name_prefix="custom_model",
+            enabled=True,
+        )
+
         if not endpoint_exists:
             self.workspace.serving_endpoints.create(
                 name=self.endpoint_name,
                 config=EndpointCoreConfigInput(
                     served_entities=served_entities,
+                    auto_capture_config=auto_capture_config,
                 ),
             )
         else:
-            self.workspace.serving_endpoints.update_config(name=self.endpoint_name, served_entities=served_entities)
+            self.workspace.serving_endpoints.update_config(
+                name=self.endpoint_name,
+                served_entities=served_entities,
+                auto_capture_config=auto_capture_config,
+            )
